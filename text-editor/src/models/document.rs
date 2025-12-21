@@ -1,6 +1,4 @@
-/// A `Document` represents a text document in the text editor.
-///
-///
+use crate::models::gap_buffer::GapBuffer;
 
 #[derive(Debug)]
 pub enum DocumentError {
@@ -8,14 +6,15 @@ pub enum DocumentError {
     ColOutOfBounds,
 }
 
+/// A `Document` represents a text document in the text editor.
 pub struct Document {
-    lines: Vec<String>,
+    lines: Vec<GapBuffer>,
 }
 
 impl Document {
     pub fn new() -> Self {
         Self {
-            lines: vec![String::new()],
+            lines: vec![GapBuffer::new()],
         }
     }
 
@@ -29,7 +28,7 @@ impl Document {
             return Err(DocumentError::ColOutOfBounds);
         }
 
-        let r = line.split_off(col);
+        let r = line.split(col);
         self.lines.insert(row + 1, r);
         Ok(())
     }
@@ -44,7 +43,7 @@ impl Document {
             return Err(DocumentError::ColOutOfBounds);
         }
 
-        line.insert(col, c);
+        line.insert_char(col, c);
         Ok(())
     }
 
@@ -61,7 +60,7 @@ impl Document {
                 .get_mut(row - 1)
                 .ok_or(DocumentError::RowOutOfBounds)?;
 
-            previous_line.push_str(&current_line);
+            previous_line.merge(current_line);
         } else {
             let line = self
                 .lines
@@ -71,12 +70,12 @@ impl Document {
             if col > line.len() {
                 return Err(DocumentError::ColOutOfBounds);
             }
-            line.remove(col - 1);
+            line.delete(col - 1);
         }
         Ok(())
     }
 
-    pub fn lines(&self) -> &Vec<String> {
+    pub fn lines(&self) -> &Vec<GapBuffer> {
         &self.lines
     }
 }
