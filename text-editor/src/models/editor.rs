@@ -17,7 +17,7 @@ impl Editor {
     }
 
     fn move_cursor(&mut self, dx: i32, dy: i32) {
-        let (mut col, mut row) = self.cursor_pos;
+        let (mut row, mut col) = self.cursor_pos;
 
         if dy < 0 {
             row = row.saturating_sub(dy.unsigned_abs() as usize);
@@ -47,7 +47,8 @@ impl Editor {
     pub fn process_keypress(&mut self, key_event: KeyEvent) {
         match key_event.code {
             KeyCode::Char(c) => {
-                self.doc.insert(self.cursor_pos.0, self.cursor_pos.1, c);
+                self.doc
+                    .insert_char(self.cursor_pos.0, self.cursor_pos.1, c);
                 self.move_cursor(1, 0);
             }
             KeyCode::Backspace => {
@@ -67,5 +68,9 @@ impl Editor {
 
     pub fn document(&self) -> &Document {
         &self.doc
+    }
+
+    pub fn cursor(&self) -> (usize, usize) {
+        self.cursor_pos
     }
 }

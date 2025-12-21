@@ -23,8 +23,17 @@ fn main() -> io::Result<()> {
 
     while !editor.should_quit() {
         terminal.draw(|f| {
-            let text = editor.document().lines().join("\n");
+            let lines: Vec<String> = editor
+                .document()
+                .lines()
+                .iter()
+                .map(|gb| gb.to_string())
+                .collect();
+            let text = lines.join("\n");
             f.render_widget(tui::widgets::Paragraph::new(text), f.size());
+
+            let cursor = editor.cursor();
+            f.set_cursor(cursor.1 as u16, cursor.0 as u16);
         })?;
 
         if let Event::Key(key_event) = event::read()? {
