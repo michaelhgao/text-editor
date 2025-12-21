@@ -1,16 +1,35 @@
 mod models;
 
-use crate::models::editor::Editor;
+use crate::models::{document::Document, editor::Editor};
 
 use std::io;
 
-use crossterm::event::{self, Event, KeyCode, KeyEvent};
-use crossterm::execute;
-use crossterm::terminal::{
-    EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
+use crossterm::{
+    event::{self, Event},
+    execute,
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
-use tui::Terminal;
-use tui::backend::CrosstermBackend;
+use tui::{
+    Terminal,
+    backend::CrosstermBackend,
+    widgets::{Paragraph, Wrap},
+};
+
+fn doc_to_screen(doc: &Document, cursor: (usize, usize), width: usize) -> (u16, u16) {
+    let (row, col) = cursor;
+
+    let mut screen_row = 0;
+
+    for i in 0..row {
+        let len = doc.lines()[i].len();
+        screen_row += (len / width).max(1);
+    }
+
+    let wrapped_row = col / width;
+    let wrapped_col = col % width;
+
+    ((screen_row + wrapped_row) as u16, wrapped_col as u16)
+}
 
 fn main() -> io::Result<()> {
     enable_raw_mode()?;
@@ -30,10 +49,12 @@ fn main() -> io::Result<()> {
                 .map(|gb| gb.to_string())
                 .collect();
             let text = lines.join("\n");
-            f.render_widget(tui::widgets::Paragraph::new(text), f.size());
+            let paragraph = Paragraph::new(text).wrap(Wrap { trim: false });
+            let size = f.size();
+            f.render_widget(paragraph, size);
 
-            let cursor = editor.cursor();
-            f.set_cursor(cursor.1 as u16, cursor.0 as u16);
+            let (y, x) = doc_to_screen(editor.document(), editor.cursor(), size.width as usize);
+            f.set_cursor(x, y);
         })?;
 
         if let Event::Key(key_event) = event::read()? {
