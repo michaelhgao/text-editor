@@ -6,9 +6,11 @@ use std::io;
 
 use crossterm::event::{self, Event, KeyCode, KeyEvent};
 use crossterm::execute;
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
-use tui::backend::CrosstermBackend;
+use crossterm::terminal::{
+    EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
+};
 use tui::Terminal;
+use tui::backend::CrosstermBackend;
 
 fn main() -> io::Result<()> {
     enable_raw_mode()?;
@@ -31,6 +33,6 @@ fn main() -> io::Result<()> {
     }
 
     disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;    
+    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
     Ok(())
 }
