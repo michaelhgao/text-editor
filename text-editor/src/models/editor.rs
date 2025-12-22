@@ -2,10 +2,18 @@ use crate::models::document::Document;
 use crossterm::event::{KeyCode, KeyEvent};
 use tui::layout::Rect;
 
+const TAB_WIDTH: usize = 4;
+
+enum Mode {
+    Normal,
+    Insert,
+}
+
 pub struct Editor {
     doc: Document,
     cursor: (usize, usize), // (row, col)
     pref_col: usize,
+    mode: Mode,
     should_quit: bool,
 }
 
@@ -15,7 +23,66 @@ impl Editor {
             doc,
             cursor: (0, 0),
             pref_col: 0,
+            mode: Mode::Normal,
             should_quit: false,
+        }
+    }
+
+    pub fn handle_key(&mut self, key: KeyEvent, rect: &Rect) {
+        match self.mode {
+            Mode::Normal => self.handle_normal_mode(key, rect),
+            Mode::Insert => self.handle_insert_mode(key, rect),
+        }
+    }
+
+    fn handle_normal_mode(&mut self, key: KeyEvent, rect: &Rect) {
+        match key.code {
+            KeyCode::Char('w') => self.move_cursor(0, -1, rect),
+            KeyCode::Char('a') => self.move_cursor(-1, 0, rect),
+            KeyCode::Char('s') => self.move_cursor(0, 1, rect),
+            KeyCode::Char('d') => self.move_cursor(1, 0, rect),
+            KeyCode::Char('i') => {
+                self.mode = Mode::Insert;
+            }
+            KeyCode::Char('q') => {
+                self.should_quit = true;
+            }
+            _ => {}
+        }
+    }
+
+    fn handle_insert_mode(&mut self, key: KeyEvent, rect: &Rect) {
+        match key.code {
+            KeyCode::Esc => self.mode = Mode::Normal,
+            KeyCode::Char(c) => {
+                self.doc.insert_char(self.cursor.0, self.cursor.1, c);
+                self.move_cursor(1, 0, rect);
+            }
+            KeyCode::Backspace => {
+                if self.cursor.1 > 0 {
+                    self.move_cursor(-1, 0, rect);
+                    self.doc.delete(self.cursor.0, self.cursor.1);
+                } else if self.cursor.0 > 0 {
+                    let prev_len = self.doc.lines()[self.cursor.0 - 1].len();
+                    self.doc.delete(self.cursor.0, 0);
+                    self.cursor.0 -= 1;
+                    self.cursor.1 = prev_len;
+                    self.pref_col = self.cursor.1;
+                }
+            }
+            KeyCode::Enter => {
+                self.doc.insert_newline(self.cursor.0, self.cursor.1);
+                self.cursor.0 += 1;
+                self.cursor.1 = 0;
+                self.pref_col = 0;
+            }
+            KeyCode::Tab => {
+                for _ in 0..TAB_WIDTH {
+                    self.doc.insert_char(self.cursor.0, self.cursor.1, ' ');
+                    self.move_cursor(1, 0, rect)
+                }
+            }
+            _ => {}
         }
     }
 
@@ -94,53 +161,6 @@ impl Editor {
         let wrapped_col = self.cursor.1 % width;
 
         ((screen_row + wrapped_row) as u16, wrapped_col as u16)
-    }
-
-    pub fn handle_key(&mut self, key_event: KeyEvent, rect: &Rect) {
-        match key_event.code {
-            KeyCode::Char(c) => {
-                self.doc.insert_char(self.cursor.0, self.cursor.1, c);
-                self.move_cursor(1, 0, rect);
-            }
-            KeyCode::Backspace => {
-                if self.cursor.1 > 0 {
-                    self.move_cursor(-1, 0, rect);
-                    self.doc.delete(self.cursor.0, self.cursor.1);
-                } else if self.cursor.0 > 0 {
-                    let prev_len = self.doc.lines()[self.cursor.0 - 1].len();
-                    self.doc.delete(self.cursor.0, 0);
-                    self.cursor.0 -= 1;
-                    self.cursor.1 = prev_len;
-                    self.pref_col = self.cursor.1;
-                }
-            }
-            KeyCode::Esc => self.should_quit = true,
-            KeyCode::Up => {
-                self.move_cursor(0, -1, rect);
-            }
-            KeyCode::Down => {
-                self.move_cursor(0, 1, rect);
-            }
-            KeyCode::Left => {
-                self.move_cursor(-1, 0, rect);
-            }
-            KeyCode::Right => {
-                self.move_cursor(1, 0, rect);
-            }
-            KeyCode::Enter => {
-                self.doc.insert_newline(self.cursor.0, self.cursor.1);
-                self.cursor.0 += 1;
-                self.cursor.1 = 0;
-                self.pref_col = 0;
-            }
-            KeyCode::Tab => {
-                for i in 0..4 {
-                    self.doc.insert_char(self.cursor.0, self.cursor.1, ' ');
-                    self.move_cursor(1, 0, rect)
-                }
-            }
-            _ => {}
-        }
     }
 
     pub fn should_quit(&self) -> bool {
