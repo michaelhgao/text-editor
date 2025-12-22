@@ -70,11 +70,15 @@ impl GapBuffer {
             .copied()
     }
 
-    pub fn push_str(&mut self, s: &str) {
-        self.move_gap(self.len());
-
+    pub fn insert_str(&mut self, col: usize, s: &str) {
+        self.move_gap(col);
         for c in s.chars() {
-            self.insert_char(self.len(), c);
+            if self.gap_size == 0 {
+                self.grow();
+            }
+            self.data[self.gap_start] = c;
+            self.gap_start += 1;
+            self.gap_size -= 1;
         }
     }
 

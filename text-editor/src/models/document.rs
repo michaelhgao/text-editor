@@ -1,3 +1,8 @@
+use std::{
+    fs::File,
+    io::{self, BufRead, BufReader},
+};
+
 use crate::models::gap_buffer::GapBuffer;
 
 #[derive(Debug)]
@@ -9,13 +14,36 @@ pub enum DocumentError {
 /// A `Document` represents a text document in the text editor.
 pub struct Document {
     lines: Vec<GapBuffer>,
+    path: Option<String>,
 }
 
 impl Document {
     pub fn new() -> Self {
         Self {
             lines: vec![GapBuffer::new()],
+            path: None,
         }
+    }
+
+    pub fn open(path: &str) -> io::Result<Self> {
+        let file = File::open(path)?;
+        let reader = BufReader::new(file);
+
+        let mut lines = Vec::new();
+
+        for line in reader.lines() {
+            let line = line?;
+            let mut gb = GapBuffer::new();
+            gb.insert_str(gb.len(), &line);
+            lines.push(gb);
+        }
+        if lines.is_empty() {
+            lines.push(GapBuffer::new());
+        }
+        Ok(Self {
+            lines,
+            path: Some(path.to_string()),
+        })
     }
 
     pub fn insert_newline(&mut self, row: usize, col: usize) -> Result<(), DocumentError> {

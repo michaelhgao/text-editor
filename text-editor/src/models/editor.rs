@@ -10,9 +10,9 @@ pub struct Editor {
 }
 
 impl Editor {
-    pub fn new() -> Self {
+    pub fn new(doc: Document) -> Self {
         Self {
-            doc: Document::new(),
+            doc,
             cursor: (0, 0),
             pref_col: 0,
             should_quit: false,

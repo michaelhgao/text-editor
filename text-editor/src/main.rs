@@ -1,8 +1,8 @@
 mod models;
 
-use crate::models::editor::Editor;
+use crate::models::{document::Document, editor::Editor};
 
-use std::io;
+use std::{env, io};
 
 use crossterm::{
     event::{self, Event},
@@ -16,13 +16,30 @@ use tui::{
 };
 
 fn main() -> io::Result<()> {
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 2 {
+        println!("Usage: {} <file>", args[0]);
+        return Ok(());
+    }
+
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let mut editor = Editor::new();
+    let doc = if let Some(path) = args.get(1) {
+        match Document::open(path) {
+            Ok(doc) => doc,
+            Err(e) => {
+                eprintln!("Failed to open '{}': {}", path, e);
+                Document::new()
+            }
+        }
+    } else {
+        Document::new()
+    };
+    let mut editor = Editor::new(doc);
 
     while !editor.should_quit() {
         let mut last_size = terminal.size()?;
