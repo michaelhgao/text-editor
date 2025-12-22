@@ -133,6 +133,12 @@ impl Editor {
                 self.cursor.1 = 0;
                 self.pref_col = 0;
             }
+            KeyCode::Tab => {
+                for i in 0..4 {
+                    self.doc.insert_char(self.cursor.0, self.cursor.1, ' ');
+                    self.move_cursor(1, 0, rect)
+                }
+            }
             _ => {}
         }
     }
