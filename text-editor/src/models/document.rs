@@ -1,6 +1,7 @@
 use std::{
-    fs::File,
-    io::{self, BufRead, BufReader},
+    fs::{self, File},
+    io::{self, BufRead, BufReader, Write},
+    path::{Path, PathBuf},
 };
 
 use crate::models::gap_buffer::GapBuffer;
@@ -14,19 +15,29 @@ pub enum DocumentError {
 /// A `Document` represents a text document in the text editor.
 pub struct Document {
     lines: Vec<GapBuffer>,
-    path: Option<String>,
+    original_path: Option<PathBuf>,
+    temp_path: PathBuf,
+    dirty: bool,
 }
 
 impl Document {
     pub fn new() -> Self {
         Self {
             lines: vec![GapBuffer::new()],
-            path: None,
+            original_path: None,
+            temp_path: PathBuf::new(),
+            dirty: false,
         }
     }
 
     pub fn open(path: &str) -> io::Result<Self> {
-        let file = File::open(path)?;
+        let original = PathBuf::from(path);
+        let mut temp = original.clone();
+        temp.set_extension("tmp");
+
+        fs::copy(&original, &temp)?;
+
+        let file = File::open(&temp)?;
         let reader = BufReader::new(file);
 
         let mut lines = Vec::new();
@@ -42,8 +53,40 @@ impl Document {
         }
         Ok(Self {
             lines,
-            path: Some(path.to_string()),
+            original_path: Some(original),
+            temp_path: temp,
+            dirty: false,
         })
+    }
+
+    pub fn save(&mut self, new_name: Option<&str>) -> io::Result<()> {
+        if let Some(name) = new_name {
+            self.original_path = Some(PathBuf::from(name));
+        }
+
+        let original = match &self.original_path {
+            Some(path) => path.clone(),
+            None => return Err(io::Error::new(io::ErrorKind::Other, "No file name")),
+        };
+
+        let mut temp = File::create(&self.temp_path)?;
+
+        for (i, line) in self.lines.iter().enumerate() {
+            temp.write_all(line.to_string().as_bytes())?;
+            if i + 1 < self.lines.len() {
+                temp.write_all(b"\n")?;
+            }
+        }
+
+        temp.sync_all()?;
+
+        fs::rename(&self.temp_path, &original)?;
+
+        fs::copy(&original, &self.temp_path)?;
+
+        self.dirty = false;
+
+        Ok(())
     }
 
     pub fn insert_newline(&mut self, row: usize, col: usize) -> Result<(), DocumentError> {
@@ -58,6 +101,9 @@ impl Document {
 
         let r = line.split(col);
         self.lines.insert(row + 1, r);
+
+        self.dirty = true;
+
         Ok(())
     }
 
@@ -72,6 +118,9 @@ impl Document {
         }
 
         line.insert_char(col, c);
+
+        self.dirty = true;
+
         Ok(())
     }
 
@@ -100,6 +149,9 @@ impl Document {
             }
             line.delete(col - 1);
         }
+
+        self.dirty = true;
+
         Ok(())
     }
 
@@ -108,9 +160,24 @@ impl Document {
     }
 
     pub fn file_name(&self) -> &str {
-        self.path
-            .as_deref()
-            .and_then(|p| p.rsplit('/').next())
+        self.original_path
+            .as_ref()
+            .and_then(|p| p.file_name())
+            .and_then(|n| n.to_str())
             .unwrap_or("[No Name]")
+    }
+
+    pub fn full_path(&self) -> Option<&Path> {
+        self.original_path.as_deref()
+    }
+
+    pub fn dirty(&self) -> bool {
+        self.dirty
+    }
+}
+
+impl Drop for Document {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.temp_path);
     }
 }

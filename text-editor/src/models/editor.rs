@@ -27,18 +27,32 @@ impl Editor {
 
     pub fn handle_key(&mut self, key: KeyEvent, rect: &Rect) {
         match self.mode {
-            Mode::Normal => self.handle_normal_mode(key, rect),
-            Mode::Insert => self.handle_insert_mode(key, rect),
-            Mode::Command => self.handle_command_mode(key, rect),
+            Mode::Normal => {
+                self.handle_normal_mode(key, rect);
+            }
+            Mode::Insert => {
+                self.handle_insert_mode(key, rect);
+            }
+            Mode::Command => {
+                self.handle_command_mode(key, rect);
+            }
         }
     }
 
     fn handle_normal_mode(&mut self, key: KeyEvent, rect: &Rect) {
         match key.code {
-            KeyCode::Char('w') => self.move_cursor(0, -1, rect),
-            KeyCode::Char('a') => self.move_cursor(-1, 0, rect),
-            KeyCode::Char('s') => self.move_cursor(0, 1, rect),
-            KeyCode::Char('d') => self.move_cursor(1, 0, rect),
+            KeyCode::Char('w') => {
+                self.move_cursor(0, -1, rect);
+            }
+            KeyCode::Char('a') => {
+                self.move_cursor(-1, 0, rect);
+            }
+            KeyCode::Char('s') => {
+                self.move_cursor(0, 1, rect);
+            }
+            KeyCode::Char('d') => {
+                self.move_cursor(1, 0, rect);
+            }
             KeyCode::Char('i') => {
                 self.mode = Mode::Insert;
             }
@@ -52,7 +66,9 @@ impl Editor {
 
     fn handle_insert_mode(&mut self, key: KeyEvent, rect: &Rect) {
         match key.code {
-            KeyCode::Esc => self.mode = Mode::Normal,
+            KeyCode::Esc => {
+                self.mode = Mode::Normal;
+            }
             KeyCode::Char(c) => {
                 self.doc.insert_char(self.cursor.0, self.cursor.1, c);
                 self.move_cursor(1, 0, rect);
@@ -109,10 +125,28 @@ impl Editor {
 
     fn execute_command(&mut self) {
         match self.cmd_buf.as_str() {
-            "q" => self.should_quit = true,
-            /* "w" => {
-                self.doc.save();
-            } */
+            "q" => {
+                // quit
+                if self.doc.dirty() {
+                } else {
+                    self.should_quit = true;
+                }
+            }
+            "s" => {
+                // save
+                self.doc.save(None);
+            }
+            cmd if cmd.starts_with("s ") => {
+                // save as
+                let name = cmd[2..].trim();
+                self.doc.save(Some(name));
+            }
+            "sq" => {
+                // save quit
+                if self.doc.save(None).is_ok() {
+                    self.should_quit = true;
+                }
+            }
             _ => {}
         }
     }
