@@ -63,13 +63,6 @@ impl GapBuffer {
         self.data.len() - self.gap_size
     }
 
-    pub fn to_string(&self) -> String {
-        let mut s = String::with_capacity(self.len());
-        s.extend(&self.data[..self.gap_start]);
-        s.extend(&self.data[self.gap_start + self.gap_size..]);
-        s
-    }
-
     pub fn chars(&self) -> impl Iterator<Item = char> + '_ {
         self.data[..self.gap_start]
             .iter()
@@ -123,5 +116,14 @@ impl GapBuffer {
         }
 
         self.gap_size += grow_by;
+    }
+}
+
+impl ToString for GapBuffer {
+    fn to_string(&self) -> String {
+        let mut s = String::with_capacity(self.len());
+        s.extend(&self.data[..self.gap_start]);
+        s.extend(&self.data[self.gap_start + self.gap_size..]);
+        s
     }
 }

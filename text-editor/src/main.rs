@@ -1,6 +1,6 @@
 mod models;
 
-use crate::models::{document::Document, editor::Editor};
+use crate::models::editor::Editor;
 
 use std::io;
 
@@ -15,22 +15,6 @@ use tui::{
     widgets::{Paragraph, Wrap},
 };
 
-fn doc_to_screen(doc: &Document, cursor: (usize, usize), width: usize) -> (u16, u16) {
-    let (row, col) = cursor;
-
-    let mut screen_row = 0;
-
-    for i in 0..row {
-        let len = doc.lines()[i].len();
-        screen_row += (len / width).max(1);
-    }
-
-    let wrapped_row = col / width;
-    let wrapped_col = col % width;
-
-    ((screen_row + wrapped_row) as u16, wrapped_col as u16)
-}
-
 fn main() -> io::Result<()> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -41,24 +25,29 @@ fn main() -> io::Result<()> {
     let mut editor = Editor::new();
 
     while !editor.should_quit() {
+        let mut last_size = terminal.size()?;
         terminal.draw(|f| {
+            last_size = f.size();
+
             let lines: Vec<String> = editor
                 .document()
                 .lines()
                 .iter()
                 .map(|gb| gb.to_string())
                 .collect();
-            let text = lines.join("\n");
-            let paragraph = Paragraph::new(text).wrap(Wrap { trim: false });
-            let size = f.size();
-            f.render_widget(paragraph, size);
 
-            let (y, x) = doc_to_screen(editor.document(), editor.cursor(), size.width as usize);
+            let text = lines.join("\n");
+
+            let paragraph = Paragraph::new(text).wrap(Wrap { trim: false });
+
+            f.render_widget(paragraph, last_size);
+
+            let (y, x) = editor.doc_to_screen(&last_size);
             f.set_cursor(x, y);
         })?;
 
         if let Event::Key(key_event) = event::read()? {
-            editor.process_keypress(key_event);
+            editor.handle_key(key_event, &last_size);
         }
     }
 
