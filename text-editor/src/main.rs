@@ -7,6 +7,7 @@ use crate::models::{
 
 use std::{env, io};
 
+use clap::{Parser, command};
 use crossterm::{
     event::{self, Event},
     execute,
@@ -20,30 +21,26 @@ use tui::{
     widgets::{Block, Paragraph, Wrap},
 };
 
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    file: Option<String>,
+}
+
 fn main() -> io::Result<()> {
-    let args: Vec<String> = env::args().collect();
-    if args.len() < 2 {
-        println!("Usage: {} <file>", args[0]);
-        return Ok(());
-    }
+    let args = Args::parse();
+
+    let doc = if let Some(path) = args.file {
+        Document::open(&path).unwrap_or_else(|_| Document::new())
+    } else {
+        Document::new()
+    };
 
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
-
-    let doc = if let Some(path) = args.get(1) {
-        match Document::open(path) {
-            Ok(doc) => doc,
-            Err(e) => {
-                eprintln!("Failed to open '{}': {}", path, e);
-                Document::new()
-            }
-        }
-    } else {
-        Document::new()
-    };
     let mut editor = Editor::new(doc);
 
     while !editor.should_quit() {

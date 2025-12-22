@@ -4,5 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-crossterm = "0.29.0" # For terminal input/output and control
-tui = "0.19"         # For building terminal user interfaces
+crossterm = "0.29.0"
+tui = "0.19"
+clap = { version = "4.5.53", features = ["derive"] }
