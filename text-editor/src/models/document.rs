@@ -106,4 +106,11 @@ impl Document {
     pub fn lines(&self) -> &Vec<GapBuffer> {
         &self.lines
     }
+
+    pub fn file_name(&self) -> &str {
+        self.path
+            .as_deref()
+            .and_then(|p| p.rsplit('/').next())
+            .unwrap_or("[No Name]")
+    }
 }

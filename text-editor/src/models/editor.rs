@@ -4,16 +4,12 @@ use tui::layout::Rect;
 
 const TAB_WIDTH: usize = 4;
 
-enum Mode {
-    Normal,
-    Insert,
-}
-
 pub struct Editor {
     doc: Document,
     cursor: (usize, usize), // (row, col)
     pref_col: usize,
     mode: Mode,
+    cmd_buf: String,
     should_quit: bool,
 }
 
@@ -24,6 +20,7 @@ impl Editor {
             cursor: (0, 0),
             pref_col: 0,
             mode: Mode::Normal,
+            cmd_buf: String::new(),
             should_quit: false,
         }
     }
@@ -32,6 +29,7 @@ impl Editor {
         match self.mode {
             Mode::Normal => self.handle_normal_mode(key, rect),
             Mode::Insert => self.handle_insert_mode(key, rect),
+            Mode::Command => self.handle_command_mode(key, rect),
         }
     }
 
@@ -44,8 +42,9 @@ impl Editor {
             KeyCode::Char('i') => {
                 self.mode = Mode::Insert;
             }
-            KeyCode::Char('q') => {
-                self.should_quit = true;
+            KeyCode::Char(':') => {
+                self.mode = Mode::Command;
+                self.cmd_buf.clear();
             }
             _ => {}
         }
@@ -82,6 +81,38 @@ impl Editor {
                     self.move_cursor(1, 0, rect)
                 }
             }
+            _ => {}
+        }
+    }
+
+    fn handle_command_mode(&mut self, key: KeyEvent, rect: &Rect) {
+        match key.code {
+            KeyCode::Esc => {
+                self.mode = Mode::Normal;
+                self.cmd_buf.clear();
+            }
+            KeyCode::Enter => {
+                self.execute_command();
+                self.mode = Mode::Normal;
+                self.cmd_buf.clear();
+            }
+            KeyCode::Backspace => {
+                self.cmd_buf.pop();
+            }
+
+            KeyCode::Char(c) => {
+                self.cmd_buf.push(c);
+            }
+            _ => {}
+        }
+    }
+
+    fn execute_command(&mut self) {
+        match self.cmd_buf.as_str() {
+            "q" => self.should_quit = true,
+            /* "w" => {
+                self.doc.save();
+            } */
             _ => {}
         }
     }
@@ -167,11 +198,35 @@ impl Editor {
         self.should_quit
     }
 
-    pub fn document(&self) -> &Document {
+    pub fn doc(&self) -> &Document {
         &self.doc
     }
 
     pub fn cursor(&self) -> (usize, usize) {
         self.cursor
+    }
+
+    pub fn mode(&self) -> &Mode {
+        &self.mode
+    }
+
+    pub fn command_buffer(&self) -> &String {
+        &self.cmd_buf
+    }
+}
+
+pub enum Mode {
+    Normal,
+    Insert,
+    Command,
+}
+
+impl Mode {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Mode::Normal => "NORMAL",
+            Mode::Insert => "INSERT",
+            Mode::Command => "COMMAND",
+        }
     }
 }

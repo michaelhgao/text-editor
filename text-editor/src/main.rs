@@ -1,6 +1,9 @@
 mod models;
 
-use crate::models::{document::Document, editor::Editor};
+use crate::models::{
+    document::Document,
+    editor::{Editor, Mode},
+};
 
 use std::{env, io};
 
@@ -10,9 +13,11 @@ use crossterm::{
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use tui::{
-    Terminal,
-    backend::CrosstermBackend,
-    widgets::{Paragraph, Wrap},
+    Frame, Terminal,
+    backend::{Backend, CrosstermBackend},
+    layout::{Constraint, Direction, Layout, Rect},
+    style::{Color, Modifier, Style},
+    widgets::{Block, Paragraph, Wrap},
 };
 
 fn main() -> io::Result<()> {
@@ -46,21 +51,16 @@ fn main() -> io::Result<()> {
         terminal.draw(|f| {
             last_size = f.size();
 
-            let lines: Vec<String> = editor
-                .document()
-                .lines()
-                .iter()
-                .map(|gb| gb.to_string())
-                .collect();
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([
+                    Constraint::Min(1),    // editor area
+                    Constraint::Length(1), // status bar
+                ])
+                .split(last_size);
 
-            let text = lines.join("\n");
-
-            let paragraph = Paragraph::new(text).wrap(Wrap { trim: false });
-
-            f.render_widget(paragraph, last_size);
-
-            let (y, x) = editor.doc_to_screen(&last_size);
-            f.set_cursor(x, y);
+            draw_editor(f, &chunks[0], &editor);
+            draw_status_bar(f, &chunks[1], &editor);
         })?;
 
         if let Event::Key(key_event) = event::read()? {
@@ -71,4 +71,46 @@ fn main() -> io::Result<()> {
     disable_raw_mode()?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
     Ok(())
+}
+
+fn draw_editor<B: Backend>(f: &mut Frame<B>, area: &Rect, editor: &Editor) {
+    let lines: Vec<String> = editor
+        .doc()
+        .lines()
+        .iter()
+        .map(|gb| gb.to_string())
+        .collect();
+
+    let text = lines.join("\n");
+
+    let paragraph = Paragraph::new(text).wrap(Wrap { trim: false });
+
+    f.render_widget(paragraph, *area);
+
+    let (y, x) = editor.doc_to_screen(&area);
+    f.set_cursor(x, y);
+}
+
+fn draw_status_bar<B: Backend>(f: &mut Frame<B>, area: &Rect, editor: &Editor) {
+    let status = match editor.mode() {
+        Mode::Command => format!(":{}", editor.command_buffer()),
+        _ => format!(
+            " {} | {} | {}:{} ",
+            editor.mode().as_str(),
+            editor.doc().file_name(),
+            editor.cursor().0 + 1,
+            editor.cursor().1 + 1
+        ),
+    };
+
+    let paragraph = Paragraph::new(status)
+        .style(
+            Style::default()
+                .fg(Color::Black)
+                .bg(Color::White)
+                .add_modifier(Modifier::BOLD),
+        )
+        .block(Block::default());
+
+    f.render_widget(paragraph, *area);
 }
