@@ -89,15 +89,18 @@ fn draw_editor<B: Backend>(f: &mut Frame<B>, area: &Rect, editor: &Editor) {
 }
 
 fn draw_status_bar<B: Backend>(f: &mut Frame<B>, area: &Rect, editor: &Editor) {
-    let status = match editor.mode() {
-        Mode::Command => format!(":{}", editor.command_buffer()),
-        _ => format!(
+    let status = if let Some(msg) = editor.status_msg() {
+        msg.clone()
+    } else if *(editor.mode()) == Mode::Command {
+        format!(":{}", editor.command_buffer())
+    } else {
+        format!(
             " {} | {} | {}:{} ",
             editor.mode().as_str(),
             editor.doc().file_name(),
             editor.cursor().0 + 1,
             editor.cursor().1 + 1
-        ),
+        )
     };
 
     let paragraph = Paragraph::new(status)

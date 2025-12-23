@@ -10,6 +10,7 @@ pub struct Editor {
     pref_col: usize,
     mode: Mode,
     cmd_buf: String,
+    status_msg: Option<String>,
     should_quit: bool,
 }
 
@@ -21,11 +22,13 @@ impl Editor {
             pref_col: 0,
             mode: Mode::Normal,
             cmd_buf: String::new(),
+            status_msg: None,
             should_quit: false,
         }
     }
 
     pub fn handle_key(&mut self, key: KeyEvent, rect: &Rect) {
+        self.status_msg = None;
         match self.mode {
             Mode::Normal => {
                 self.handle_normal_mode(key, rect);
@@ -128,9 +131,14 @@ impl Editor {
             "q" => {
                 // quit
                 if self.doc.dirty() {
+                    self.status_msg =
+                        Some("No write since last change (add ! to override)".to_string());
                 } else {
                     self.should_quit = true;
                 }
+            }
+            "q!" => {
+                self.should_quit = true;
             }
             "s" => {
                 // save
@@ -247,8 +255,13 @@ impl Editor {
     pub fn command_buffer(&self) -> &String {
         &self.cmd_buf
     }
+
+    pub fn status_msg(&self) -> &Option<String> {
+        &self.status_msg
+    }
 }
 
+#[derive(PartialEq, Eq)]
 pub enum Mode {
     Normal,
     Insert,
