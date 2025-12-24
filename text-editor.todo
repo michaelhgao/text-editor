@@ -1,6 +1,5 @@
 File ops (create, open, save, save as)
 File locking
-Force quit with dirty flag
 Swap file crash recovery
 Autosave(?)
 Ctrl+[key] commands
